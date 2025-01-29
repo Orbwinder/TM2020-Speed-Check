@@ -1,0 +1,8 @@
+[meta]
+name     = "Speed Checker"
+author   = "Orbwinder"
+category = "Overlay"
+version  = "0.0.1"
+
+[script]
+dependencies = [ "VehicleState", "MLHook", "MLFeedRaceData" ]
