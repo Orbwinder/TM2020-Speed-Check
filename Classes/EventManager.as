@@ -1,15 +1,15 @@
 // this file manages the event system to generate and delete events in the event queue
 
+// array of wheel states that are considered grounded
+const array<VehicleState::FallingState> GROUNDED_WHEEL_STATES = {VehicleState::FallingState::RestingGround, VehicleState::FallingState::RestingWater};
+
 array<Event@> g_events;
-uint g_recentTakeOffSpeed = 0;
+uint g_recentLiveSpeed = 0;
 bool g_PrevAirborne = false;
 bool g_skipNextFrame = false;
 
-uint g_prevCheckpoints = 0;
 uint g_prevRespawns = 0;
 int g_prevRaceTime = 0;
-
-uint64 g_recentTakeoffTime = 0; // stand-in for event time diff
 
 void UpdateEvents(){
     if (!Setting_PluginEnabled) return; // escape if the plugin is disabled
@@ -23,74 +23,56 @@ void UpdateEvents(){
 
     bool nowAirborne = true; // default true then check all wheels
     if(!g_skipNextFrame){
-        // check if wheels are on the ground
-        // bool nowAirborne = true; // default true then check all wheels
-
-        // print('wheel: ' + VehicleState::GetWheelFalling(nowState, 0));
-        for(int i=0; i<=3; i++){
-            if(VehicleState::GetWheelFalling(nowState, i) == VehicleState::FallingState::RestingGround) {
-                nowAirborne = false;
+        // ignore spawning and first 15ms of race
+        if (player.TheoreticalRaceTime <= 15) {
+            nowAirborne = false;
+        } else {
+            // check if any wheels are on the ground
+            for(int i=0; i<=3; i++){
+                if(GROUNDED_WHEEL_STATES.Find(VehicleState::GetWheelFalling(nowState, i)) != -1) {
+                    nowAirborne = false;
+                    break;
+                }
             }
         }
 
-        // if(nowAirborne == true && g_PrevAirborne == false) { // only update on jump
-        if(nowAirborne == !Setting_LiveUpdateGround && g_PrevAirborne == false) {
+        float displaySpeed2 = nowState.WorldVel.Length() * 3.6f;
+
+        if(Setting_TriggerOnTakeoff && nowAirborne == true && g_PrevAirborne == false) {
             // takeoff detected:
-            float displaySpeed = nowState.FrontSpeed * 3.6f;
-            float displaySpeed2 = nowState.WorldVel.Length() * 3.6f;
-            g_recentTakeOffSpeed = displaySpeed2;
+            g_events.InsertAt(0, Event(uint64(Time::get_Now()), EVENT_TYPE::Takeoff, displaySpeed2));
+            g_recentLiveSpeed = int(displaySpeed2);
+        }
+        if(Setting_LiveUpdateGround && nowAirborne == false || Setting_LiveUpdateAlways){ 
+            g_recentLiveSpeed = int(displaySpeed2);
         }
 
         // check for respawn/reset changes
         if ( player.NbRespawnsRequested != g_prevRespawns 
-        || uint(player.CpCount) < g_prevCheckpoints 
         || player.TheoreticalRaceTime < g_prevRaceTime
         ) {
             // erase all events to cancel all animations
             g_events.set_Length(0);
             g_skipNextFrame = true;
-            g_recentTakeOffSpeed = 0;
+            g_recentLiveSpeed = 0;
         }
-        
-        // g_events.InsertAt(0, Event(uint64(Time::get_Now()), EVENT_TYPE::Liftoff, prevGear));
     } else {
         // after skipping the frame, reset flag
         g_skipNextFrame = false; 
     }
 
-    if(nowAirborne && !g_PrevAirborne){
-        g_recentTakeoffTime = Time::get_Now(); // game time, not race time. would race time be better?
-    }
     // update prevAirborne
     g_PrevAirborne = nowAirborne; 
     // update others
     g_prevRespawns = uint(player.NbRespawnsRequested);
-    g_prevCheckpoints = int(player.CpCount);
     g_prevRaceTime = int(player.TheoreticalRaceTime);
 
     // cleanup events array (remove expired events)
-    const int eventExpiryMilis = 2000;
+    const int eventExpiryMilis = PULSE_LENGTH;
     for(int i=g_events.Length-1; i>=0; i--){
-        if (Time::Now - g_events[i].t > eventExpiryMilis) {
+        if (Time::Now - g_events[i].time > eventExpiryMilis) {
             // remove the event from array
             g_events.RemoveAt(i);
         }
     }
-}
-
-// copied from NoRespawnTimer
-int64 GetRaceTime(CSmScriptPlayer& scriptPlayer)
-{
-	if (scriptPlayer is null)
-		// not playing
-		return 0;
-	
-	auto playgroundScript = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
-
-	if (playgroundScript is null)
-		// Online 
-		return GetApp().Network.PlaygroundClientScriptAPI.GameTime - scriptPlayer.StartTime;
-	else
-		// Solo
-		return playgroundScript.Now - scriptPlayer.StartTime;
 }

@@ -1,12 +1,13 @@
+// event types for possible future functionality expansion
 enum EVENT_TYPE{
     None,       // default, does nothing
-    Liftoff,
+    Takeoff,
     Checkpoint,
     Reset,
     ReactorStart,
     ReactorEnd,
     BoosterExit,
-    Slomo,
+    Slowmo,
     Fragile,
     CruiseControl,
     NoSteer,
@@ -16,15 +17,15 @@ enum EVENT_TYPE{
 
 class Event {
 
-    uint64 t = 0.0;
+    uint64 time = 0.0;
     EVENT_TYPE eventType = EVENT_TYPE::None;
     uint vehicleSpeed = 0;
 
     // Constructor
     Event(uint64 timestamp, EVENT_TYPE type, float curSpeed){
-        t = timestamp;
+        time = timestamp;
         eventType = type;
-        vehicleSpeed = curSpeed;
+        vehicleSpeed = int(curSpeed);
     }
 
     // class comparison handler
