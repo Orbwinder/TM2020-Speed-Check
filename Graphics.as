@@ -1,11 +1,9 @@
-// types gear indications
-enum GearIndicator
-{
-    Disengaged,   // gear is disengaged
-	Engaged,      // gear is engaged
-}
+// this file handles all NanoVG rendering
 
-nvg::Font m_font;
+// font for rendering speed (Desg7-classic-bold from https://github.com/keshikan/DSEG)
+nvg::Font m_font; 
+
+const int PULSE_LENGTH = 300; 
 
 void Render() {
     if (!Setting_PluginEnabled || (Setting_HideWithGame && !UI::IsGameUIVisible())) return; // escape if the plugin is disabled
@@ -16,12 +14,6 @@ void Render() {
 
     vec2 screenSize = vec2(Draw::GetWidth(), Draw::GetHeight());
     vec2 relativePos = Setting_Position * (screenSize - Setting_Size);
-
-    // DEV: show configured overlay position
-    // nvg::BeginPath();
-    // nvg::Circle(relativePos, 4);
-    // nvg::FillColor(vec4(1,0,0,1));
-    // nvg::Fill();
 
     // draw backing card
     nvg::BeginPath();
@@ -40,43 +32,59 @@ void Render() {
     nvg::FontFace(m_font);
     nvg::FontSize(Setting_FontSize);
 
-    // text shadow
-     nvg::FillColor(Setting_ShadowColor);
-    RenderSpeed(relativePos + vec2(Setting_FontSize/8, Setting_FontSize/8));
+    // determine value and color to display
+    uint displaySpeed = g_recentLiveSpeed;
+    vec4 displayColor = Setting_DefaultFontColor;
+    if (g_events.Length >= 1 && g_events[0].time - Time::get_Now() > PULSE_LENGTH){
+        displaySpeed = g_events[0].vehicleSpeed;
+        displayColor = Setting_FlyingFontColor;
+    }
+
+    // draw text shadow, offset scales with fontsize
+    nvg::FillColor(Setting_ShadowColor);
+    RenderSpeed(relativePos + vec2(Setting_FontSize/8, Setting_FontSize/8), displaySpeed);
     // display text
     if(g_PrevAirborne){
         nvg::FillColor(Setting_FlyingFontColor);
     }else{
-        nvg::FillColor(Setting_DefaultFontColor);
+        nvg::FillColor(displayColor);
     }
-    RenderSpeed(relativePos);
-    RenderPulseRing(vec2(relativePos.x-(Setting_Size.x/2)-(Setting_Size.y/2),relativePos.y));
+    RenderSpeed(relativePos, displaySpeed);
+
+    // pulse rings
+    if(Setting_ShowAnimatedPulse){
+        const vec2 ringPosition = relativePos + Setting_PulseOffset;
+        // rings backdrop
+        nvg::BeginPath();
+        nvg::Circle(ringPosition, Setting_Size.y/2);
+        nvg::FillColor(Setting_BackdropColor);
+        nvg::Fill();
+        // pulse rings, render newest on top
+        for(int i=g_events.Length-1; i>=0; i--){
+            RenderPulseRing(ringPosition, Time::get_Now()-g_events[i].time, Setting_FlyingFontColor);
+        }
+    }
+}
+
+// function to display speed value as full 3 digits even when below 100 speed. capped at 999 to prevent rollover
+string PadSpeedZeros(const uint speedValue) {
+    return tostring(Math::Min(speedValue + 1000, 1999)).SubStr(1);
 }
 
 // not sure if this needs to be a seperate function
-void RenderSpeed(const vec2 position) {
+void RenderSpeed(const vec2 position, const uint speed) {
     nvg::TextAlign(nvg::Align::Middle | nvg::Align::Center);
 
     nvg::BeginPath();
-	nvg::TextBox(position.x-Setting_Size.x/2, position.y, Setting_Size.x , padZeros(g_recentTakeOffSpeed)); // Setting_Size.x
+	nvg::TextBox(position.x-Setting_Size.x/2, position.y, Setting_Size.x , PadSpeedZeros(speed)); // Setting_Size.x
 }
 
-// function to display speed value as full 3 digits even when below 100 speed
-string padZeros(const uint value) {
-    return tostring(value + 1000).SubStr(1);
-}
-
-const int PULSE_LENGTH = 300;
-
-void RenderPulseRing(const vec2 position) {
-    float pulseProgress = Math::Min(Time::get_Now() - g_recentTakeoffTime, PULSE_LENGTH);
+void RenderPulseRing(const vec2 position, const uint diffTime, const vec4 color) {
+    float pulseProgress = Math::Min(diffTime, PULSE_LENGTH);
     if(pulseProgress == PULSE_LENGTH) return;
     nvg::BeginPath();
-    // nvg::Circle(position, Math::Lerp(0, Setting_Size.y/2, pulseProgress/PULSE_LENGTH));
-    nvg::Circle(position, Math::Lerp(0, Setting_Size.y/2, Math::Sin((pulseProgress/PULSE_LENGTH) * Math::PI)));
-    // nvg::FillColor(vec4(1,0,0,1));
-    // nvg::Fill();
-    nvg::StrokeColor(Setting_FlyingFontColor);
+    nvg::Circle(position, Math::Lerp(0, Setting_Size.y/2.4, Math::Sin((pulseProgress/PULSE_LENGTH) * Math::PI)));
+    nvg::StrokeColor(color);
     nvg::StrokeWidth(5);
     nvg::Stroke();
 }
