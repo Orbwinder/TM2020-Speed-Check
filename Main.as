@@ -10,7 +10,7 @@ void Main() {
 }
 
 void RenderMenu() {
-    if (UI::MenuItem("\\$1BA" + Icons::Kenney::Cog + "\\$G Gear-Blocks", "", Setting_PluginEnabled))
+    if (UI::MenuItem("\\$BA1" + Icons::Kenney::Top + "\\$G Speedlight", "", Setting_PluginEnabled))
         Setting_PluginEnabled = !Setting_PluginEnabled;
 }
 
