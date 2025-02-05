@@ -1,6 +1,6 @@
 
 void Main() {
-    // load font?
+    // load font
     m_font = nvg::LoadFont("DSEG7Classic-Bold.ttf");
     // loop to update events
     while (true) {

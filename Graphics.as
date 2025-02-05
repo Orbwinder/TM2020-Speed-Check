@@ -3,6 +3,7 @@
 // font for rendering speed (Desg7-classic-bold from https://github.com/keshikan/DSEG)
 nvg::Font m_font; 
 
+// duration of the pulse animation in miliseconds
 const int PULSE_LENGTH = 300; 
 
 void Render() {
@@ -66,17 +67,10 @@ void Render() {
     }
 }
 
-// function to display speed value as full 3 digits even when below 100 speed. capped at 999 to prevent rollover
-string PadSpeedZeros(const uint speedValue) {
-    return tostring(Math::Min(speedValue + 1000, 1999)).SubStr(1);
-}
-
-// not sure if this needs to be a seperate function
 void RenderSpeed(const vec2 position, const uint speed) {
     nvg::TextAlign(nvg::Align::Middle | nvg::Align::Center);
-
     nvg::BeginPath();
-	nvg::TextBox(position.x-Setting_Size.x/2, position.y, Setting_Size.x , PadSpeedZeros(speed)); // Setting_Size.x
+	nvg::TextBox(position.x-Setting_Size.x/2, position.y, Setting_Size.x , PadSpeedZeros(speed));
 }
 
 void RenderPulseRing(const vec2 position, const uint diffTime, const vec4 color) {

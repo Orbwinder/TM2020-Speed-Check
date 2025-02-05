@@ -2,7 +2,7 @@
 name     = "Speedlight"
 author   = "Orbwinder"
 category = "Overlay"
-version  = "0.9.0"
+version  = "1.0.0"
 
 [script]
 dependencies = [ "VehicleState", "MLHook", "MLFeedRaceData" ]

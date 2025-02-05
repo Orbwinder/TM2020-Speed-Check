@@ -1,6 +1,6 @@
 // this file manages the event system to generate and delete events in the event queue
 
-// array of wheel states that are considered grounded
+// predetermined array of wheel states that are considered grounded
 const array<VehicleState::FallingState> GROUNDED_WHEEL_STATES = {VehicleState::FallingState::RestingGround, VehicleState::FallingState::RestingWater};
 
 array<Event@> g_events;
